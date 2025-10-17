@@ -1,0 +1,44 @@
+name: Backup Script CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # allows manual trigger
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+    
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      
+      - name: Make backup script executable
+        run: chmod +x backup-automation.sh
+
+      
+      - name: Setup test logs
+        run: |
+          mkdir test-logs
+          echo "Test syslog content" > test-logs/syslog
+          echo "Test auth log" > test-logs/auth.log
+
+     
+      - name: Run backup script on dummy logs
+        run: |
+          sed -i 's|/var/log|test-logs|' backup-automation.sh
+          ./backup-automation.sh <<< "syslog auth.log"
+
+      
+      - name: List backup folder
+        run: ls -lh ~/logs
+
+      
+      - name: Create GitHub Release and upload backup
+        uses: ncipollo/release-action@v1
+        with:
+          tag: "backup-${{ github.run_number }}"
+          name: "Backup ${{ github.run_number }}"
+          files: ~/logs/*.tar.gz
